@@ -7,15 +7,27 @@
 #include <fcntl.h>
 #include <pthread.h>
 #include <ctype.h>
+#include <time.h>
 
 #define NRES_TYPES  10
 #define NTASKS      25
 
+//thread
+pthread_t       tid[NTASKS];
+int             counter;
+pthread_mutex_t lock;
+//thread
+
 int monitorTime;
 int niter;
-int g;
+int end_state;
 
-int resource_count;
+//counter
+int resources_count;
+int task_count;
+//counter
+
+char run_array[32][32];
 
 struct resources{
   char      name[32];
@@ -27,6 +39,12 @@ struct tasks{
   char      taskName[32];
   int       busyTime;
   int       idleTime;
-  char      name_value[32][32];
+  char      name[32][32];
+  int       value[32];
+  int       taskCount;
+  int       iteration;
+  int       idle;
+  int       run;
+  double    time;
 };
 struct tasks tasks_struct[NTASKS];
