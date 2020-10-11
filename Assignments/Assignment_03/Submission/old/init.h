@@ -12,7 +12,6 @@
 #include <sys/types.h>
 #include <time.h>
 #include <pthread.h>
-#include <netdb.h>
 
 #define MAX_NSW     7
 #define MAXIP       1000
@@ -27,14 +26,12 @@
 struct  pollfd  fds_cont[MAX_NSW+1];
 int     fds_array[MAX_NSW+1][2];
 
-int sw_index;
-
 struct switch_info{
-    char   swi[32];
-    char   swj[32];
-    char   swk[32];
-    char   srcIP[32];
-    char   desIP[32];
+    char*   swi;
+    char*   swj;
+    char*   swk;
+    char*   srcIP;
+    char*   desIP;
 };
 struct switch_info sw_struct[MAX_NSW+1];
 
