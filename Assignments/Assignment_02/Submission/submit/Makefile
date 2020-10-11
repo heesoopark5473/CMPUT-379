@@ -10,10 +10,10 @@
 #        make -f Makefile-c clean     // remove unneeded files
 # ------------------------------------------------------------
 
-allFiles = a2sdn a2sdn.c controller.c controller.h controller_function.c controller_function.h init.h main_function.c main_function.h switch.c switch.h switch_function.c switch_function.h t1.dat t2.dat Makefile
+allFiles = a2sdn a2sdn.c controller.c controller.h controller_function.c controller_function.h init.h main_function.c main_function.h switch.c switch.h switch_function.c switch_function.h Makefile README ProjectReport.pdf
 target=	submit
 scpDir=heesoo@ug01.cs.ualberta.ca:directory
-out= a2sdn
+out= a2sdn myfifo*
 CFLAGS = -Wall -std=c99
 LELIVES = -D_GNU_SOURCE
 

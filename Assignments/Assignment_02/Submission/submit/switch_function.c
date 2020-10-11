@@ -11,6 +11,7 @@ int get_swi_int(char* swi){
   return swi_int;
 }
 
+// initialze_flowtable
 int initialize_flowtable(char* IP_range){
 
   ft_struct[flow_table_index].srcIP_lo    = 0;
@@ -44,6 +45,7 @@ char* get_open_pkt(char* swi, char* swj, char* swk, char* IP_range){
   return open_pkt;
 }
 
+// calculate the packet, and returns back to switch with what switch should do
 char* calculate_pkt(char* trafficLine, char* swi, int LowIP, int HighIP){
   char* line_copy;
   line_copy = malloc(sizeof(char)*32);

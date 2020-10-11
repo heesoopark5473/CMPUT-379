@@ -5,6 +5,7 @@
 #include <poll.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <time.h>
 
 #define MAX_NSW 7
 #define MAXIP 1000
@@ -12,6 +13,8 @@
 #define SRCIP_LO 0
 #define SRCIP_HI 1000
 #define UNUSED(x) (void)(x)
+
+// Decalre all the structs and global variable
 
 int flow_table_index;
 

@@ -1,5 +1,7 @@
 #include "init.h"
 
+// ERROR CHECKING FUNCTIONS
+
 int check_argv_number(int argc){
   if(argc == 3 || argc == 6) {return 1;}
   else {return -1;}

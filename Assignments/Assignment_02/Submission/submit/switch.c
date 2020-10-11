@@ -4,41 +4,60 @@
 
 int switch_sdn(char* swi, char* trafficFile, char* swj, char* swk, char* IP_range){
 
+  printf("\n\n");
+  printf("  ##########################################################################\n");
+  printf("  #                                                                        #\n");
+  printf("  #                           SWITCH   %s                                 #\n",swi);
+  printf("  #                                                                        #\n");
+  printf("  ##########################################################################\n");
+
+  printf("\n\tYou may Enter Commands (list/exit) at any time\n");
+
+  printf("\n\tPlease Wait For 3-7 seconds to Execute Next Switch");
+
   FILE* file;
   char  file_array[100][100];
   int i=0;
 
+  // check if the trafficFile exists
   if(file_exist(trafficFile)){file=fopen(trafficFile,"r");}
   else{printf("trafficFile Does Not Exist\n"); return 0;}
 
+  // if exists, read the trafficFile line by line and store into an array
   while(fgets(file_array[i], sizeof(file_array[i]), file)){ i++; }
 
+  // get the fifo name between current switch and controller
   char* swi_cont_fifo = fifo_name(get_swi_int(swi), 0);
   char* cont_swi_fifo = fifo_name(0, get_swi_int(swi));
 
-  printf("\n");
-  printf("\tSwitch Reads From Controller : %s\n", cont_swi_fifo);
+  printf("\n\n");
+  printf("\tSwitch Reads From Controller   : %s\n", cont_swi_fifo);
   printf("\tSwitch Writes To Controller    : %s\n\n", swi_cont_fifo);
 
   printf("\tREAD FROM LEFT                 : %s\n", fifo_name(get_swi_int(swi)-1, get_swi_int(swi)));
   printf("\tREAD FROM RIGHT                : %s\n", fifo_name(get_swi_int(swi)+1, get_swi_int(swi)));
 
-  printf("\tWRITING FROM LEFT              : %s\n", fifo_name(get_swi_int(swi), get_swi_int(swi)-1));
-  printf("\tWRITING FROM RIGHT             : %s\n", fifo_name(get_swi_int(swi), get_swi_int(swi)+1));
+  printf("\tWRITING TO LEFT SWITCH         : %s\n", fifo_name(get_swi_int(swi), get_swi_int(swi)-1));
+  printf("\tWRITING TO RIGHT SWITHC        : %s\n", fifo_name(get_swi_int(swi), get_swi_int(swi)+1));
+
+  printf("\n\n\n");
 
 
   int iter_count=0;
   flow_table_index=0;
 
+  // intialize the flowtabl with given data on assignment page
   initialize_flowtable(IP_range);
 
+  // create and open pkt to send to controller
   char* open_pkt  = get_open_pkt(swi,swj,swk,IP_range);
 
+  // if connection has been made between current switch and controller, send an open packet
   if(file_exist(cont_swi_fifo) && file_exist(swi_cont_fifo)){
     swi_data.open = 1;
     int fd_write_open;
     fd_write_open = open(swi_cont_fifo, O_WRONLY);
-    usleep(1000);
+    usleep(10000);
     write(fd_write_open, open_pkt, strlen(open_pkt)+1);
     close(fd_write_open);
     free(open_pkt);
@@ -48,17 +67,22 @@ int switch_sdn(char* swi, char* trafficFile, char* swj, char* swk, char* IP_rang
 
   while(1){
 
+    // For every line in traffic File, calculate what switch should do with every line
     if(iter_count < i+1){
+        // calculate the packet
         char* query_pkt = calculate_pkt(file_array[iter_count-1], swi, get_ip_int(IP_range,1), get_ip_int(IP_range,2));
+        // if switch should query the packet, then send to controller
         if(strncmp(query_pkt, "QUERY", 5) == 0){
+          // increment query count
           swi_data.query++;
           int fd_write_query;
           fd_write_query = open(swi_cont_fifo, O_WRONLY);
-          usleep(1000);
+          usleep(10000);
           write(fd_write_query, query_pkt, strlen(query_pkt)+1); 
           close(fd_write_query);
           free(query_pkt);
         }else if(strncmp(query_pkt, "ADD", 3) == 0){
+        // if switch should relay the packet, then send to neighbor switch, correspond to output of calculated packet
         }else if(strncmp(query_pkt, "RELAY", 5) == 0){
           swi_data.relayout++;
           char* copy_query_pkt;
@@ -75,18 +99,18 @@ int switch_sdn(char* swi, char* trafficFile, char* swj, char* swk, char* IP_rang
           strcat(final_ret, relay_ip);
           strcat(final_ret, " ");
           strcat(final_ret, relay_ad);
-
+          // if destination switch is smaller then current switch, send to left neighbor
           if(atoi(relay_ad) < get_swi_int(swi)){
             int swi_relay_left;
             swi_relay_left = open(fifo_name(get_swi_int(swi), get_swi_int(swi)-1),  O_WRONLY);
-            usleep(1000);
+            usleep(10000);
             write(swi_relay_left, final_ret, strlen(final_ret)+1);
             close(swi_relay_left);
-
+          // if destination switch is greater than current switch, send to right neighbor
           }else if(atoi(relay_ad) > get_swi_int(swi)){
             int swi_relay_right;
             swi_relay_right = open(fifo_name(get_swi_int(swi), get_swi_int(swi)+1),  O_WRONLY);
-            usleep(1000);
+            usleep(10000);
             write(swi_relay_right, final_ret, strlen(final_ret)+1);
             close(swi_relay_right);          
           }
@@ -94,8 +118,8 @@ int switch_sdn(char* swi, char* trafficFile, char* swj, char* swk, char* IP_rang
         }
     }
     
+    // increment after each line is read
     iter_count++;
-
 
     struct  pollfd fds_swi[4];
     int     ret_swi;
@@ -111,10 +135,12 @@ int switch_sdn(char* swi, char* trafficFile, char* swj, char* swk, char* IP_rang
     int left_switch = get_swi_int(swi)-1;
     int right_switch= get_swi_int(swi)+1;
 
+    // open FIFO files to read from Controller, left neighbor switch, right neighbor switch
     fd_read_cont      = open(cont_swi_fifo, O_RDONLY | O_NONBLOCK);
     fd_read_left      = open(fifo_name(left_switch, cur_switch),  O_RDONLY | O_NONBLOCK);
     fd_read_right     = open(fifo_name(right_switch, cur_switch), O_RDONLY | O_NONBLOCK);
 
+    // poll for incoming input from controller, left switch, right switch and user STDIN
     fds_swi[0].fd     = fd_read_cont;
     fds_swi[0].events = POLLIN;
 
@@ -132,6 +158,7 @@ int switch_sdn(char* swi, char* trafficFile, char* swj, char* swk, char* IP_rang
     if(ret_swi == -1){ perror("poll");}
     if(!ret_swi){}
 
+    // polling for incoming input from controller
     if(fds_swi[0].revents & POLLIN){
 
       message_swi       = malloc(sizeof(char)*48);
@@ -139,6 +166,7 @@ int switch_sdn(char* swi, char* trafficFile, char* swj, char* swk, char* IP_rang
 
       read(fd_read_cont, message_swi, sizeof(char)*48);
 
+      // if received ACK packet, then increment ack counter
       if(strncmp(message_swi, "ACK", 3) == 0){
         char* copy_ack;
         copy_ack = malloc(sizeof(char)*12);
@@ -148,6 +176,7 @@ int switch_sdn(char* swi, char* trafficFile, char* swj, char* swk, char* IP_rang
         swi_data.ack++;
       }
 
+      // if received ADDRULE packet, then incrent addrule counter and add that rule to flow_table
       if(strncmp(message_swi, "ADDRULE", 7) == 0){
         strcpy(copy_message_swi, message_swi);
         char* t0 = strtok(copy_message_swi, " "); UNUSED(t0);
@@ -159,6 +188,7 @@ int switch_sdn(char* swi, char* trafficFile, char* swj, char* swk, char* IP_rang
         add_drop_rule(t2, flow_table_index);
       }
 
+      // if received RELAY packet, add that rule to flow table and relay to corresponding switch
       if(strncmp(message_swi, "RELAY", 5) == 0){
 
         strcpy(copy_message_swi, message_swi);
@@ -174,7 +204,6 @@ int switch_sdn(char* swi, char* trafficFile, char* swj, char* swk, char* IP_rang
 
           swi_data.relayout++;
 
-
           flow_table_index++;
           ft_struct[flow_table_index].srcIP_lo = SRCIP_LO;
           ft_struct[flow_table_index].srcIP_hi = SRCIP_HI;
@@ -187,7 +216,7 @@ int switch_sdn(char* swi, char* trafficFile, char* swj, char* swk, char* IP_rang
           
           int fd_write_right;
           fd_write_right = open(fifo_name(cur_switch, right_switch),  O_WRONLY);
-          usleep(1000);
+          usleep(10000);
           write(fd_write_right, message_swi, strlen(message_swi)+1);
           close(fd_write_right);
                   
@@ -207,15 +236,14 @@ int switch_sdn(char* swi, char* trafficFile, char* swj, char* swk, char* IP_rang
 
           int fd_write_left;
           fd_write_left = open(fifo_name(cur_switch, left_switch),  O_WRONLY);
-          usleep(1000);
+          usleep(10000);
           write(fd_write_left, message_swi, strlen(message_swi)+1);
           close(fd_write_left);
         }
       }
-       //free(message_swi);
-       //free(copy_message_swi);
     }
 
+    // polling for incoming input from left neighbor switch
     if(fds_swi[1].revents & POLLIN){
       char* message_left;
       char* left_copy;
@@ -224,6 +252,7 @@ int switch_sdn(char* swi, char* trafficFile, char* swj, char* swk, char* IP_rang
 
       read(fd_read_left, message_left, sizeof(char)*48);
 
+      // if RELAY packet received, check if there is a rule that fits the packet
       if(strncmp(message_left, "RELAY", 5) == 0){
         
         strcpy(left_copy, message_left);
@@ -239,6 +268,7 @@ int switch_sdn(char* swi, char* trafficFile, char* swj, char* swk, char* IP_rang
           }
         }
 
+        // if destination switch is not current switch keep relaying
         if(atoi(left_sw) == get_swi_int(swi)){
           swi_data.relayin++;
         } else if(atoi(left_sw) > get_swi_int(swi)){
@@ -246,7 +276,7 @@ int switch_sdn(char* swi, char* trafficFile, char* swj, char* swk, char* IP_rang
 
             int fd_left_right;
             fd_left_right = open(fifo_name(cur_switch, left_switch),  O_WRONLY);
-            usleep(1000);
+            usleep(10000);
             write(fd_left_right, message_left, strlen(message_left)+1);
             close(fd_left_right);
         } else if(atoi(left_sw) < get_swi_int(swi)){
@@ -254,13 +284,14 @@ int switch_sdn(char* swi, char* trafficFile, char* swj, char* swk, char* IP_rang
 
             int fd_left_left;
             fd_left_left = open(fifo_name(cur_switch, left_switch),  O_WRONLY);
-            usleep(1000);
+            usleep(10000);
             write(fd_left_left, message_left, strlen(message_left)+1);
             close(fd_left_left);          
         }
       }
     }
 
+    // polling for input from right switch
     if(fds_swi[2].revents & POLLIN){
       char* message_right;
       char* right_copy;
@@ -269,6 +300,7 @@ int switch_sdn(char* swi, char* trafficFile, char* swj, char* swk, char* IP_rang
 
       read(fd_read_right, message_right, sizeof(char)*48);
 
+      // if RELAY packet received, check if there is a rule that fits the packet
       if(strncmp(message_right, "RELAY", 5) == 0){
         
         strcpy(right_copy, message_right);
@@ -286,13 +318,14 @@ int switch_sdn(char* swi, char* trafficFile, char* swj, char* swk, char* IP_rang
 
         if(atoi(right_sw) == get_swi_int(swi)){
           swi_data.relayin++;
-
+        
+        // if destination switch is not current switch keep relaying
         } else if(atoi(right_sw) > get_swi_int(swi)){
             swi_data.relayout++;
 
             int fd_right_right;
             fd_right_right = open(fifo_name(cur_switch, right_switch),  O_WRONLY);
-            usleep(1000);
+            usleep(10000);
             write(fd_right_right, message_right, strlen(message_right)+1);
             close(fd_right_right);
         } else if(atoi(right_sw) < get_swi_int(swi)){
@@ -300,7 +333,7 @@ int switch_sdn(char* swi, char* trafficFile, char* swj, char* swk, char* IP_rang
 
             int fd_right_left;
             fd_right_left = open(fifo_name(cur_switch, left_switch),  O_WRONLY);
-            usleep(1000);
+            usleep(10000);
             write(fd_right_left, message_right, strlen(message_right)+1);
             close(fd_right_left);          
         }

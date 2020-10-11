@@ -1,8 +1,7 @@
 #include "init.h"
 #include "controller_function.h"
 
-int remove_fifo(){system("rm myfifo*"); return 0;}
-
+// create FIFOs between switches for between switch communication
 int create_switch_fifo(int nSwitch){
   for(int a = 1; a < nSwitch+1 ; a++){
     if(a == 1){
@@ -17,6 +16,7 @@ int create_switch_fifo(int nSwitch){
   return 0;
 }
 
+// return the file name of FIFO, from (2 switches) or (1 switch & 1 controller) number that wants to communicate
 char* fifo_name(int read, int write){
   char      read_char[32];
   char      write_char[32];
@@ -32,6 +32,8 @@ char* fifo_name(int read, int write){
   return final;
 }
 
+// once switch has been turned on and controller receives the open packet
+// controller stores that switch information in a struct array
 char* store_swi_info(char* message){
   char*   t1 = strtok(message, " "); UNUSED(t1);
   char*   t2 = strtok(NULL, " ");   char*   t3 = strtok(NULL, " ");
@@ -59,6 +61,7 @@ char* store_swi_info(char* message){
   return t2;
 }
 
+// print the list or exit upon users request
 int print_list_quit_cont(int nSwitch){
   char input[1024];
   fgets(input, sizeof input / sizeof *input, stdin);
